@@ -20,7 +20,7 @@ import Handlerable from '../handler/Handlerable';
 import Point from '../geo/Point';
 import Size from '../geo/Size';
 import PointExtent from '../geo/PointExtent';
-import Extent from '../geo/Extent';
+import Extent, { ExtentLike } from '../geo/Extent';
 import Coordinate from '../geo/Coordinate';
 import Layer from '../layer/Layer';
 import Renderable from '../renderer/Renderable';
@@ -30,6 +30,7 @@ import EPSG9807, { type EPSG9807ProjectionType } from '../geo/projection/Project
 import { AnimationOptionsType, EasingType } from '../core/Animation';
 import { BBOX, bboxInBBOX, getDefaultBBOX, pointsBBOX } from '../core/util/bbox';
 import { Attribution } from '../control';
+import { AttributionOptionsType } from '../control/Control.Attribution';
 
 const TEMP_COORD = new Coordinate(0, 0);
 const TEMP_POINT = new Point(0, 0);
@@ -1152,7 +1153,7 @@ export class Map extends Handlerable(Eventable(Renderable(Class))) {
 
     /**
      * Set the map to be fit for the given extent with the max zoom level possible.
-     * @param  {Extent} extent - extent
+     * @param  {ExtentLike} extent - extent
      * @param  {Number} zoomOffset - zoom offset
      * @param  {Object} [options={}] - options
      * @param  {Object} [options.animation]
@@ -1167,14 +1168,15 @@ export class Map extends Handlerable(Eventable(Renderable(Class))) {
      * @param  {Function} step - step function for animation
      * @return {Map | player} - this
      */
-    fitExtent(extent: Extent, zoomOffset?: number, options?: MapFitType, step?: (frame) => void) {
+    fitExtent(extent: ExtentLike, zoomOffset?: number, options?: MapFitType, step?: (frame) => void) {
         options = (options || {} as any);
         if (!extent) {
             return this;
         }
-        extent = new Extent(extent, this.getProjection());
-        const zoom = this.getFitZoom(extent, options.isFraction || false, options) + (zoomOffset || 0);
-        let center = extent.getCenter();
+        const syncExtent = new Extent(extent);
+        const zoom = this.getFitZoom(syncExtent, options.isFraction || false, options) + (zoomOffset || 0);
+        const containerExtent = syncExtent.convertTo(p => this.coordToPoint(p));
+        let center = this.pointToCoord(containerExtent.getCenter() as Point);
         if (this._getPaddingSize(options)) {
             center = this._getCenterByPadding(center, zoom, options);
         }
@@ -2737,7 +2739,7 @@ export type MapOptionsType = {
     scrollWheelZoom?: boolean;
     geometryEvents?: boolean;
     control?: boolean;
-    attribution?: boolean;
+    attribution?: boolean | AttributionOptionsType;
     zoomControl?: boolean;
     scaleControl?: boolean;
     overviewControl?: boolean;
